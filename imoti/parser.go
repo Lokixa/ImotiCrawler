@@ -1,49 +1,66 @@
 package imoti
 
 import (
-	"errors"
-	"fmt"
-	"net/http"
+	"io/ioutil"
+	"reflect"
 	"regexp"
 	"strings"
 
 	"../core"
-	"./xpaths"
-
-	"github.com/antchfx/htmlquery"
-	"golang.org/x/net/html"
 )
 
 // Parse searches the node for xpaths defined in the imoti package
-func Parse(url string, tableChan chan core.Table) error {
-	node := contentToNode(url)
-	if node == nil {
-		fmt.Println("Null html node")
-		return errors.New("Invalid html")
+func Parse(url string, tableChan chan<- core.Table) (err error) {
+	filters := map[string]func(string, *core.Table){
+		"Name":      setName,
+		"Location":  setLocation,
+		"Activated": setActivated,
+		"Price":     setPrice,
 	}
-	var table core.Table
+	files, err := ioutil.ReadDir("imoti/adTypes/")
+	if err != nil {
+		return
+	}
+	var adTypes []string
+	for i := range files {
+		adTypes = append(adTypes, "imoti/adTypes/"+files[i].Name())
+	}
+	// Fetch all xpaths in json files
+	xpaths, err := FetchXpaths(url, adTypes...)
+	// if err != nil {
+	// 	return
+	// }
 
+	table := core.Table{}
 	table.URL = url
-	setName(node, &table)
 
-	setLocation(node, &table)
+	tableVal := reflect.ValueOf(&table).Elem()
+	tableSig := tableVal.Type()
 
-	price := fetchXpath(node, xpaths.Price)
-	table.Price = strings.ReplaceAll(price, " ", "")
+	for i := 0; i < tableSig.NumField(); i++ {
 
-	setActivated(node, &table)
+		fieldName := tableSig.Field(i).Name
+		// Actual field
+		field := tableVal.FieldByName(fieldName)
 
-	table.Agency = fetchXpath(node, xpaths.Agency)
-
-	table.Broker = fetchXpath(node, xpaths.Broker)
-
-	table.TypeOfAd = fetchXpath(node, xpaths.TypeOfAd)
+		if xpaths[fieldName] != "" {
+			if filters[fieldName] != nil {
+				// Filters assign directly to table. Could refactor in future.
+				filters[fieldName](xpaths[fieldName], &table)
+			} else {
+				// Assign to field
+				field.SetString(xpaths[fieldName])
+			}
+		}
+	}
 
 	tableChan <- table
-	return nil
+	return
 }
-func setName(node *html.Node, data *core.Table) {
-	name := fetchXpath(node, xpaths.Name)
+func setPrice(price string, table *core.Table) {
+	table.Price = strings.ReplaceAll(price, " ", "")
+}
+func setName(name string, data *core.Table) {
 	if name == "" {
 		return
 	}
@@ -52,8 +69,7 @@ func setName(node *html.Node, data *core.Table) {
 	data.Name.Type = strings.Replace(adType.FindString(name), ",", "", 1)
 	data.Name.Size = size.FindString(name)[2:]
 }
-func setLocation(node *html.Node, data *core.Table) {
-	location := fetchXpath(node, xpaths.Location)
+func setLocation(location string, data *core.Table) {
 	if location == "" {
 		return
 	} else if !strings.Contains(location, ",") {
@@ -66,30 +82,10 @@ func setLocation(node *html.Node, data *core.Table) {
 	data.Location.Area = strings.Replace(city.FindString(location), ",", "", 1)
 	data.Location.Region = street.FindString(location)[2:]
 }
-func setActivated(node *html.Node, data *core.Table) {
-	activated := fetchXpath(node, xpaths.Activated)
+func setActivated(activated string, data *core.Table) {
 	if activated == "" {
 		return
 	}
 	invExp := regexp.MustCompile(`[0-9]{2}.*`)
 	data.Activated = invExp.FindString(activated)
-}
-
-func fetchXpath(node *html.Node, xpath string) string {
-	queried, _ := htmlquery.Query(node, xpath)
-	// if XPath is correct
-	if queried != nil && queried.FirstChild != nil {
-		// Get content of tag
-		return queried.FirstChild.Data
-	}
-	return ""
-}
-
-func contentToNode(url string) (node *html.Node) {
-	source, err := http.Get(url)
-	if err != nil {
-		return
-	}
-	node, err = html.Parse(source.Body)
-	return
 }

@@ -17,6 +17,7 @@ type Table struct {
 }
 
 func (table Table) String() string {
+	//TODO Refactor with reflection
 	return fmt.Sprintf("%s, %s, %q, %q, %q, %q, %q, %q", table.Name, table.Location, table.Price, table.Activated, table.Agency, table.Broker, table.TypeOfAd, table.URL)
 }
 

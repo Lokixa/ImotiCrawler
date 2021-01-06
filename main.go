@@ -17,6 +17,9 @@ import (
 )
 
 func main() {
+	crawlAndConquer()
+}
+func crawlAndConquer() {
 	db, err := sql.Open("mysql", "crawler@/realestate")
 	if err != nil {
 		panic(err)
@@ -34,6 +37,7 @@ func main() {
 	}()
 	insertLinks(db, crawler.Links)
 	db.Close()
+
 }
 
 // Reads local `crawl.json` for navpage link
@@ -72,14 +76,16 @@ func insertLinks(db *sql.DB, links <-chan string) {
 	var wg sync.WaitGroup
 	wg.Add(length)
 	for i := 0; i < length; i++ {
-		// foreach link try insert into database table
+		// foreach link try insert into database
 		go func() {
 			data := <-tableChan
 			err := core.InsertIntoDB(data, db)
 			if err != nil {
-				fmt.Println(err)
+				// fmt.Println(err)
+				// log.Fatal(err)
+			} else {
+				fmt.Printf("Inserting %q into db\n", data.URL)
 			}
-			// fmt.Println(data)
 			wg.Done()
 		}()
 	}

@@ -1,0 +1,14 @@
+{
+    "Required": [
+        "Name"
+    ],
+    "XPaths": {
+        "Name": "/html/body/div[1]/main/div[2]/div/section[1]/header/h2",
+        "Location": "/html/body/div[1]/main/div[2]/div/section[1]/header/span[2]",
+        "Price": "/html/body/div[1]/main/div[2]/div/aside/section/header/div[1]/strong",
+        "Activated": "/html/body/div[1]/main/div[2]/div/section[1]/header/ul/li[1]",
+        "Agency": "/html/body/div[1]/main/div[2]/div/section[2]/ul/li[1]/div/div/table/tbody/tr/td[1]/h6/a",
+        "Broker": "/html/body/div[1]/main/div[2]/div/section[2]/ul/li[2]/div/div/table/tbody/tr/td[1]/a/h6",
+        "TypeOfAd": "/html/body/div[1]/main/div[2]/div/section[1]/header/span[1]"
+    }
+}
