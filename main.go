@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"sync"
 	"time"
@@ -14,10 +16,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const navpage = "https://www.imoti.net/bg/obiavi/r/?page=1&sid=iGqQs6"
-
 func main() {
 	db, err := sql.Open("mysql", "crawler@/realestate")
+	if err != nil {
+		panic(err)
+	}
+	navpage, err := getNavpage()
 	if err != nil {
 		panic(err)
 	}
@@ -30,6 +34,22 @@ func main() {
 	}()
 	insertLinks(db, crawler.Links)
 	db.Close()
+}
+
+// Reads local `crawl.json` for navpage link
+func getNavpage() (string, error) {
+	data, err := ioutil.ReadFile("./crawl.json")
+	if err != nil {
+		return "", err
+	}
+	jsonObj := struct {
+		Navpage string
+	}{}
+	err = json.Unmarshal(data, &jsonObj)
+	if err != nil {
+		return "", err
+	}
+	return jsonObj.Navpage, err
 }
 func insertLinks(db *sql.DB, links <-chan string) {
 	rand.Seed(time.Now().UnixNano())
